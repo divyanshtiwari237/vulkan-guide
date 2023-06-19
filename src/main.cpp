@@ -1,5 +1,5 @@
 #include <vk_engine.h>
-
+#include<iostream>
 int main(int argc, char* argv[])
 {
 	VulkanEngine engine;
@@ -8,7 +8,10 @@ int main(int argc, char* argv[])
 	
 	engine.run();	
 
-	engine.cleanup();	
+	engine.cleanup();
+	std::cout<<"16";
+
+
 
 	return 0;
 }
