@@ -26,8 +26,10 @@
 void VulkanEngine::init()
 {
 	// We initialize SDL and create a window with it. 
+	SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
+	
 	_window = SDL_CreateWindow(
 		"Vulkan Engine",
 		SDL_WINDOWPOS_UNDEFINED,
@@ -36,6 +38,7 @@ void VulkanEngine::init()
 		_windowExtent.height,
 		window_flags
 	);
+	
 	//load the core Vulkan structures
 	init_vulkan();
 	//create the swapchain
