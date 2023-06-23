@@ -9,6 +9,7 @@ class VulkanEngine {
 public:
 
 	VkInstance _instance;
+	int _selectedShader{ 0 };
 	VkDebugUtilsMessengerEXT _debug_messenger;
 	VkPhysicalDevice _chosenGPU;
 	VkDevice _device;
@@ -58,6 +59,7 @@ public:
 	VkFence _renderFence;
 	VkPipelineLayout _trianglePipelineLayout;
 	VkPipeline _trianglePipeline;
+	VkPipeline _redTrianglePipeline;
 private:
 	void init_vulkan();
 	void init_swapchain();

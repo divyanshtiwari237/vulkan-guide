@@ -76,48 +76,48 @@ void VulkanEngine::init_swapchain()
 void VulkanEngine::cleanup()
 {	
 	if (_isInitialized) {
-		std::cout<<"1";
+	
 		vkDeviceWaitIdle(_device);
-		std::cout<<"2";
+	
 
 		vkDestroyCommandPool(_device, _commandPool, nullptr);
-		std::cout<<"3";
+	
 
 		//destroy sync objects
 		vkDestroyFence(_device, _renderFence, nullptr);
-		std::cout<<"4";
+	
 		vkDestroySemaphore(_device, _renderSemaphore, nullptr);
-		std::cout<<"5";
+	
 		vkDestroySemaphore(_device, _presentSemaphore, nullptr);
-		std::cout<<"6";
+	
 		
 		vkDestroySwapchainKHR(_device, _swapchain, nullptr);
-		std::cout<<"7";
+	
 		
 		vkDestroyRenderPass(_device, _renderPass, nullptr);
-		std::cout<<"8";
+	
 		//destroy swapchain resources
 		for (int i = 0; i < _swapchainImageViews.size(); i++) {
 
 			vkDestroyFramebuffer(_device, _framebuffers[i], nullptr);
-			std::cout<<"9";
+		
 			vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
-			std::cout<<"10";
+			
 		}
 		vkDestroyDevice(_device, nullptr);
-			std::cout<<"11";
+			
 
 		vkDestroySurfaceKHR(_instance, _surface, nullptr);
-			std::cout<<"12";
+			
 
 		vkb::destroy_debug_utils_messenger(_instance, _debug_messenger);
-			std::cout<<"13";
+			
 
 		vkDestroyInstance(_instance, nullptr);
-			std::cout<<"14";
+			
 
 		SDL_DestroyWindow(_window);
-			std::cout<<"15";
+			
 
 	}
 }
@@ -210,7 +210,14 @@ void VulkanEngine::draw()
 
 	vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 	//finalize the render pass
-	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline);
+	if(_selectedShader == 0)
+	{
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline);
+	}
+	else
+	{
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _redTrianglePipeline);
+	}
 	vkCmdDraw(cmd, 3, 1, 0, 0);
 	vkCmdEndRenderPass(cmd);
 	//finalize the command buffer (we can no longer add commands, but it can now be executed)
@@ -310,7 +317,7 @@ bool VulkanEngine::load_shader_module(const char* filePath, VkShaderModule* outS
 void VulkanEngine:: init_pipelines()
 {
 	VkShaderModule triangleFragShader;
-	if (!load_shader_module("shaders/traingle.frag.spv", &triangleFragShader))
+	if (!load_shader_module("shaders/triangle.frag.spv", &triangleFragShader))
 	{
 		std::cout << "Error when building the triangle fragment shader module" << std::endl;
 	}
@@ -326,6 +333,26 @@ void VulkanEngine:: init_pipelines()
 	}
 	else {
 		std::cout << "Triangle vertex shader successfully loaded" << std::endl;
+	}
+
+
+	//compile red triangle modules
+	VkShaderModule redTriangleFragShader;
+	if (!load_shader_module("shaders/colored_triangle.frag.spv", &redTriangleFragShader))
+	{
+		std::cout << "Error when building the triangle fragment shader module" << std::endl;
+	}
+	else {
+		std::cout << "Red Triangle fragment shader successfully loaded" << std::endl;
+	}
+
+	VkShaderModule redTriangleVertShader;
+	if (!load_shader_module("shaders/colored_triangle.vert.spv", &redTriangleVertShader))
+	{
+		std::cout << "Error when building the triangle vertex shader module" << std::endl;
+	}
+	else {
+		std::cout << "Red Triangle vertex shader successfully loaded" << std::endl;
 	}
 
 	//build the pipeline layout that controls the inputs/outputs of the shader
@@ -376,6 +403,18 @@ void VulkanEngine:: init_pipelines()
 	//finally build the pipeline
 	_trianglePipeline = pipelineBuilder.build_pipeline(_device, _renderPass);
 
+	pipelineBuilder._shaderStages.clear();
+
+
+	pipelineBuilder._shaderStages.push_back(
+		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, redTriangleVertShader));
+
+	pipelineBuilder._shaderStages.push_back(
+		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, redTriangleFragShader));
+
+	//build the red triangle pipeline
+	_redTrianglePipeline = pipelineBuilder.build_pipeline(_device, _renderPass);
+
 
 }
 
@@ -391,6 +430,18 @@ void VulkanEngine::run()
 		{
 			//close the window when user alt-f4s or clicks the X button			
 			if (e.type == SDL_QUIT) bQuit = true;
+
+			else if (e.type == SDL_KEYDOWN)
+			{
+				if (e.key.keysym.sym == SDLK_SPACE)
+				{
+					_selectedShader += 1;
+					if(_selectedShader > 1)
+					{
+						_selectedShader = 0;
+					}
+				}
+			}
 		}
 		draw();
 	}
