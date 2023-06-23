@@ -8,6 +8,7 @@
 #include "VkBootstrap.h"
 #include<iostream>
 #include<fstream>
+#include <glm/gtx/transform.hpp>
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -89,8 +90,10 @@ void VulkanEngine::cleanup()
 		vkDeviceWaitIdle(_device);
 
 		vkWaitForFences(_device, 1, &_renderFence, true, 1000000000);
+		
 
 		_mainDeletionQueue.flush();
+		vmaDestroyAllocator(_allocator);
 
 		vkDestroyDevice(_device, nullptr);
 		vkDestroySurfaceKHR(_instance, _surface, nullptr);
@@ -205,6 +208,27 @@ void VulkanEngine::draw()
 	//bind the mesh vertex buffer with offset 0
 	VkDeviceSize offset = 0;
 	vkCmdBindVertexBuffers(cmd, 0, 1, &_triangleMesh._vertexBuffer._buffer, &offset);
+
+	//make a model view matrix for rendering the object
+    //camera position
+    glm::vec3 camPos = { 0.f,0.f,-2.f };
+
+    glm::mat4 view = glm::translate(glm::mat4(1.f), camPos);
+    //camera projection
+    glm::mat4 projection = glm::perspective(glm::radians(70.f), 1700.f / 900.f, 0.1f, 200.0f);
+    projection[1][1] *= -1;
+    //model rotation
+    glm::mat4 model = glm::rotate(glm::mat4{ 1.0f }, glm::radians(_frameNumber * 0.4f), glm::vec3(0, 1, 0));
+
+    //calculate final mesh matrix
+    glm::mat4 mesh_matrix = projection * view * model;
+
+    MeshPushConstants constants;
+    constants.render_matrix = mesh_matrix;
+
+    //upload the matrix to the GPU via push constants
+    vkCmdPushConstants(cmd, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+
 
 	vkCmdDraw(cmd, 3, 1, 0, 0);
 	//finalize the render pass
@@ -346,6 +370,23 @@ void VulkanEngine:: init_pipelines()
 
 	//build the pipeline layout that controls the inputs/outputs of the shader
 	//we are not using descriptor sets or other systems yet, so no need to use anything other than empty default
+
+	VkPipelineLayoutCreateInfo mesh_pipeline_layout_info = vkinit::pipeline_layout_create_info();
+
+	//setup push constants
+	VkPushConstantRange push_constant;
+	//this push constant range starts at the beginning
+	push_constant.offset = 0;
+	//this push constant range takes up the size of a MeshPushConstants struct
+	push_constant.size = sizeof(MeshPushConstants);
+	//this push constant range is accessible only in the vertex shader
+	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	mesh_pipeline_layout_info.pPushConstantRanges = &push_constant;
+	mesh_pipeline_layout_info.pushConstantRangeCount = 1;
+
+	VK_CHECK(vkCreatePipelineLayout(_device, &mesh_pipeline_layout_info, nullptr, &_meshPipelineLayout));
+
 	VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
 
 	VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr, &_trianglePipelineLayout));
@@ -387,7 +428,7 @@ void VulkanEngine:: init_pipelines()
 	pipelineBuilder._colorBlendAttachment = vkinit::color_blend_attachment_state();
 
 	//use the triangle layout we created
-	pipelineBuilder._pipelineLayout = _trianglePipelineLayout;
+	pipelineBuilder._pipelineLayout = _meshPipelineLayout;
 
 	//finally build the pipeline
 	_trianglePipeline = pipelineBuilder.build_pipeline(_device, _renderPass);
@@ -456,6 +497,8 @@ void VulkanEngine:: init_pipelines()
 
 		//destroy the pipeline layout that they use
 		vkDestroyPipelineLayout(_device, _trianglePipelineLayout, nullptr);
+		vkDestroyPipelineLayout(_device, _meshPipelineLayout, nullptr);
+	
     });
 
 
@@ -702,7 +745,7 @@ void VulkanEngine::upload_mesh(Mesh& mesh)
 
 	//add the destruction of triangle mesh buffer to the deletion queue
 	_mainDeletionQueue.push_function([=]() {
-		std::cout<<"here";
+		
 
         vmaDestroyBuffer(_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
     });

@@ -8,6 +8,13 @@
 #include <functional>
 #include <deque>
 #include <vk_mesh.h>
+#include <glm/glm.hpp>
+
+struct MeshPushConstants {
+	glm::vec4 data;
+	glm::mat4 render_matrix;
+};
+
 struct DeletionQueue
 {
 	public:
@@ -88,6 +95,7 @@ public:
 	VmaAllocator _allocator;
 	VkPipeline _meshPipeline;
 	Mesh _triangleMesh;
+	VkPipelineLayout _meshPipelineLayout;
 	
 private:
 	void init_vulkan();
