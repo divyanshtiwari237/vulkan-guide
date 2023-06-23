@@ -2,11 +2,12 @@
 // or project specific include files.
 
 #pragma once
+
 #include<vector>
 #include <vk_types.h>
 #include <functional>
 #include <deque>
-
+#include <vk_mesh.h>
 struct DeletionQueue
 {
 	public:
@@ -84,6 +85,10 @@ public:
 	VkPipeline _trianglePipeline;
 	VkPipeline _redTrianglePipeline;
 	DeletionQueue _mainDeletionQueue;
+	VmaAllocator _allocator;
+	VkPipeline _meshPipeline;
+	Mesh _triangleMesh;
+	
 private:
 	void init_vulkan();
 	void init_swapchain();
@@ -92,6 +97,8 @@ private:
 	void init_framebuffers();
 	void init_sync_structures();
 	void init_pipelines();
+	void load_meshes();
+	void upload_mesh(Mesh& mesh);
 	
 
 };
@@ -110,6 +117,7 @@ class PipelineBuilder
 	VkPipelineLayout _pipelineLayout;
 	
 	VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
+	
 
 
 };

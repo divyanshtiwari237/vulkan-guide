@@ -9,6 +9,9 @@
 #include<iostream>
 #include<fstream>
 
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
+
  #define VK_CHECK( x)											 \
 																 \
 	do              											 \
@@ -50,9 +53,11 @@ void VulkanEngine::init()
 	//initialize framebuffer
 	init_framebuffers();
 	init_sync_structures();
-	//everything went fine
+	
 
 	init_pipelines();
+	load_meshes();
+	//everything went fine
 	
 	_isInitialized = true;
 }
@@ -80,7 +85,9 @@ void VulkanEngine::init_swapchain()
 void VulkanEngine::cleanup()
 {	
 	if (_isInitialized) {
-	
+		
+		vkDeviceWaitIdle(_device);
+
 		vkWaitForFences(_device, 1, &_renderFence, true, 1000000000);
 
 		_mainDeletionQueue.flush();
@@ -127,6 +134,12 @@ void VulkanEngine::init_vulkan()
 	// use vkbootstrap to get a Graphics queue
 	_graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
 	_graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+
+	VmaAllocatorCreateInfo allocatorInfo = {};
+    allocatorInfo.physicalDevice = _chosenGPU;
+    allocatorInfo.device = _device;
+    allocatorInfo.instance = _instance;
+    vmaCreateAllocator(&allocatorInfo, &_allocator);
 }
 
 void VulkanEngine::init_commands()
@@ -607,6 +620,61 @@ VkPipeline PipelineBuilder :: build_pipeline(VkDevice device, VkRenderPass pass)
 	}
 		
 
+}
+
+void VulkanEngine::load_meshes()
+{
+	_triangleMesh._vertices.resize(3);
+
+	//vertex positions
+	_triangleMesh._vertices[0].position = { 1.f, 1.f, 0.0f };
+	_triangleMesh._vertices[1].position = {-1.f, 1.f, 0.0f };
+	_triangleMesh._vertices[2].position = { 0.f,-1.f, 0.0f };
+
+	//vertex colors, all green
+	_triangleMesh._vertices[0].color = { 0.f, 1.f, 0.0f }; //pure green
+	_triangleMesh._vertices[1].color = { 0.f, 1.f, 0.0f }; //pure green
+	_triangleMesh._vertices[2].color = { 0.f, 1.f, 0.0f }; //pure green
+
+	//we don't care about the vertex normals
+
+	upload_mesh(_triangleMesh);
+}
+
+void VulkanEngine::upload_mesh(Mesh& mesh)
+{
+	//allocate vertex buffer
+	VkBufferCreateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	//this is the total size, in bytes, of the buffer we are allocating
+	bufferInfo.size = mesh._vertices.size() * sizeof(Vertex);
+	//this buffer is going to be used as a Vertex Buffer
+	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+
+	//let the VMA library know that this data should be writeable by CPU, but also readable by GPU
+	VmaAllocationCreateInfo vmaallocInfo = {};
+	vmaallocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+	//allocate the buffer
+	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo,
+		&mesh._vertexBuffer._buffer,
+		&mesh._vertexBuffer._allocation,
+		nullptr));
+
+	//add the destruction of triangle mesh buffer to the deletion queue
+	_mainDeletionQueue.push_function([=]() {
+		std::cout<<"here";
+
+        vmaDestroyBuffer(_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
+    });
+
+	void* data;
+	vmaMapMemory(_allocator, mesh._vertexBuffer._allocation, &data);
+
+	memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
+
+	vmaUnmapMemory(_allocator, mesh._vertexBuffer._allocation);
 }
 
 
