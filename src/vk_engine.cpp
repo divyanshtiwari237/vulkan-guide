@@ -30,7 +30,7 @@
 void VulkanEngine::init()
 {
 	// We initialize SDL and create a window with it. 
-	SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
+	SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
 	
@@ -207,7 +207,7 @@ void VulkanEngine::draw()
 
 	//bind the mesh vertex buffer with offset 0
 	VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(cmd, 0, 1, &_triangleMesh._vertexBuffer._buffer, &offset);
+	vkCmdBindVertexBuffers(cmd, 0, 1, &_monkeyMesh._vertexBuffer._buffer, &offset);
 
 	//make a model view matrix for rendering the object
     //camera position
@@ -230,7 +230,7 @@ void VulkanEngine::draw()
     vkCmdPushConstants(cmd, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
 
 
-	vkCmdDraw(cmd, 3, 1, 0, 0);
+	vkCmdDraw(cmd, _monkeyMesh._vertices.size(), 1, 0, 0);
 	//finalize the render pass
 	vkCmdEndRenderPass(cmd);
 	//finalize the command buffer (we can no longer add commands, but it can now be executed)
@@ -719,7 +719,12 @@ void VulkanEngine::load_meshes()
 
 	//we don't care about the vertex normals
 
+	//load the monkey
+	_monkeyMesh.load_from_obj("assets/monkey_smooth.obj");
+
 	upload_mesh(_triangleMesh);
+	upload_mesh(_monkeyMesh);
+
 }
 
 void VulkanEngine::upload_mesh(Mesh& mesh)
