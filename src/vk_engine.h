@@ -10,6 +10,19 @@
 #include <vk_mesh.h>
 #include <glm/glm.hpp>
 
+struct Material {
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
+};
+
+struct RenderObject {
+	Mesh* mesh;
+
+	Material* material;
+
+	glm::mat4 transformMatrix;
+};
+
 struct MeshPushConstants {
 	glm::vec4 data;
 	glm::mat4 render_matrix;
@@ -97,6 +110,25 @@ public:
 	Mesh _triangleMesh;
 	VkPipelineLayout _meshPipelineLayout;
 	Mesh _monkeyMesh;
+	VkImageView _depthImageView;
+	AllocatedImage _depthImage;
+	VkFormat _depthFormat;
+
+	//default array of renderable objects
+	std::vector<RenderObject> _renderables;
+
+	std::unordered_map<std::string,Material> _materials;
+	std::unordered_map<std::string,Mesh> _meshes;
+	//functions
+
+	//create material and add it to the map
+	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout,const std::string& name);
+
+	//returns nullptr if it can't be found
+	Material* get_material(const std::string& name);
+
+	//returns nullptr if it can't be found
+	Mesh* get_mesh(const std::string& name);
 	
 private:
 	void init_vulkan();
@@ -108,6 +140,8 @@ private:
 	void init_pipelines();
 	void load_meshes();
 	void upload_mesh(Mesh& mesh);
+	void draw_objects(VkCommandBuffer cmd,RenderObject* first, int count);
+	void init_scene();
 	
 
 };
@@ -115,6 +149,7 @@ private:
 class PipelineBuilder
 {
 	public:
+	VkPipelineDepthStencilStateCreateInfo _depthStencil;
 	std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
 	VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
 	VkPipelineInputAssemblyStateCreateInfo _inputAssembly;

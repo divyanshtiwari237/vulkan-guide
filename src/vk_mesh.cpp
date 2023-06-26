@@ -56,8 +56,7 @@ bool Mesh::load_from_obj(const char* filename)
 
     //load the OBJ file
 	bool ch = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename, "/mnt/c/projects/vulkan-guide/assets");
-	if(ch == true)
-	std::cout<<attrib.vertices.size();
+	
     //make sure to output the warnings to the console, in case there are issues with the file
 	if (!warn.empty() ) {
 		std::cout << "WARN: " << warn << std::endl;
