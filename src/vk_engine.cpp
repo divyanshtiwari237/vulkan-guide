@@ -296,6 +296,11 @@ void VulkanEngine::draw()
 
 	//increase the number of frames drawn
 	_frameNumber++;
+	currFrame = SDL_GetTicks();
+	float deltaTime = (currFrame - lastFrame)/1000.0;
+	float speed = 0.05f*deltaTime;
+	cam.setSpeed(speed);
+
 }
 
 bool VulkanEngine::load_shader_module(const char* filePath, VkShaderModule* outShaderModule)
@@ -548,6 +553,33 @@ void VulkanEngine::run()
 						_selectedShader = 0;
 					}
 				}
+
+				else if(e.key.keysym.sym == SDLK_w)
+				{
+					cam.onW();
+				}
+
+				else if(e.key.keysym.sym == SDLK_s)
+				{
+					cam.onS();
+				}
+
+				else if(e.key.keysym.sym == SDLK_a)
+				{
+					cam.onA();
+				}
+
+				else if(e.key.keysym.sym == SDLK_d)
+				{
+					cam.onD();
+				}
+			}
+
+			else if(e.type == SDL_MOUSEMOTION)
+			{
+				int mouseX = e.motion.x;
+    			int mouseY = e.motion.y;
+				cam.onMouse(mouseX, mouseY);
 			}
 		}
 		draw();
@@ -792,7 +824,7 @@ void VulkanEngine::load_meshes()
 	//we don't care about the vertex normals
 
 	//load the monkey
-	_monkeyMesh.load_from_obj("assets/monkey_smooth.obj");
+	_monkeyMesh.load_from_obj("assets/donut.obj");
 
 	upload_mesh(_triangleMesh);
 	upload_mesh(_monkeyMesh);
@@ -874,10 +906,12 @@ Mesh* VulkanEngine::get_mesh(const std::string& name)
 void VulkanEngine::draw_objects(VkCommandBuffer cmd,RenderObject* first, int count)
 {
 	//make a model view matrix for rendering the object
-	//camera view
-	glm::vec3 camPos = { 0.f,-6.f,-10.f };
+	
+	
 
-	glm::mat4 view = glm::translate(glm::mat4(1.f), camPos);
+	
+
+	glm::mat4 view = cam.getViewMatrix();
 	//camera projection
 	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1700.f / 900.f, 0.1f, 200.0f);
 	projection[1][1] *= -1;
@@ -941,8 +975,19 @@ void VulkanEngine:: init_scene()
 		}
 	}
 
+	//camera view
+	glm::vec3 camPos = { 0.f,-6.f,-10.f };
+	glm::vec3 up = {0.0, 1.0, 0.0};
+	glm::vec3 front = {0.0, 0.0, -1.0};
+	float speed = 0.05f;
+
+	cam = Camera(camPos, up, front, speed);
+	lastFrame = 0.0f;
+
 
 }
+
+
 
 
 

@@ -9,10 +9,119 @@
 #include <deque>
 #include <vk_mesh.h>
 #include <glm/glm.hpp>
-
+#include <glm/gtc/matrix_transform.hpp>
 struct Material {
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
+};
+
+class Camera
+{
+	private:
+	glm:: vec3 cameraPos;
+	glm:: vec3 up;
+	glm:: vec3 cameraFront;
+	glm::mat4 view;
+	float speed;
+	float pitch;
+	float yaw;
+	float lastX;
+	float lastY;
+
+	public:
+
+	Camera()
+	: cameraPos(glm::vec3(0.0,0.0,3.0)), up(glm::vec3(0.0, 1.0, 0.0)), cameraFront(glm::vec3(0.0,0.0,0.0)), speed(0.05), lastX(850), lastY(450)
+	{
+		calculateViewMatrix();			
+	}
+
+	Camera(glm::vec3& pos, glm::vec3& up, glm::vec3& front, float& speed)
+	: cameraPos(pos), up(up), cameraFront(front), speed(speed)
+	{
+		calculateViewMatrix();
+	}
+
+	void calculateViewMatrix()
+	{
+		view = glm::lookAt(cameraPos, cameraPos + cameraFront, up);
+	}
+
+	void incrementPosition(glm::vec3& displacement)
+	{
+		cameraPos += displacement;
+		calculateViewMatrix();
+	}
+
+	float getSpeed()
+	{
+		return speed;
+	}
+
+	void setSpeed(float& sp)
+	{
+		speed = sp;
+	}
+
+	void onW()
+	{
+		cameraPos += speed*cameraFront;
+		calculateViewMatrix();
+	}
+
+	void onS()
+	{
+		cameraPos -= speed*cameraFront;
+		calculateViewMatrix();	
+	}
+
+	void onA()
+	{
+		
+		cameraPos -= glm::normalize(glm::cross(cameraFront, up)) * speed;
+		calculateViewMatrix();
+	}
+
+	void onD()
+	{
+		cameraPos += glm::normalize(glm::cross(cameraFront, up)) * speed;
+		calculateViewMatrix();
+	}
+
+	void onMouse(int xpos, int ypos)
+	{
+		float xoffset = xpos - lastX;
+		float yoffset = lastY - ypos; 
+		lastX = xpos;
+		lastY = ypos;
+
+		float sensitivity = 0.1f;
+		xoffset *= sensitivity;
+		yoffset *= sensitivity;
+
+		yaw   += xoffset;
+		pitch += yoffset;
+
+		if(pitch > 89.0f)
+			pitch = 89.0f;
+		if(pitch < -89.0f)
+			pitch = -89.0f;
+
+		glm::vec3 direction;
+		direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+		direction.y = sin(glm::radians(pitch));
+		direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+		cameraFront = glm::normalize(direction);
+
+		calculateViewMatrix();
+
+	}
+
+	glm::mat4& getViewMatrix()
+	{
+		return view;
+	}
+
 };
 
 struct RenderObject {
@@ -129,6 +238,10 @@ public:
 
 	//returns nullptr if it can't be found
 	Mesh* get_mesh(const std::string& name);
+
+	Camera cam;
+	float currFrame;
+	float lastFrame;
 	
 private:
 	void init_vulkan();
